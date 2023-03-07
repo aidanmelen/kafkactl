@@ -1,4 +1,4 @@
-from .topic import Topic
+from kafka.topic import Topic
 
 import click
 import json
@@ -8,6 +8,24 @@ import json
 def create(ctx):
     """Create one or many resources."""
     pass
+
+@create.command("acls")
+@click.pass_obj
+def create_acls(ctx):
+    """Create Kafka ACLs."""
+    raise NotImplemented
+
+@create.command("brokers")
+@click.pass_obj
+def create_brokers(ctx):
+    """Create Kafka Brokers."""
+    raise NotImplemented
+
+@create.command("groups")
+@click.pass_obj
+def create_consumer_groups(ctx):
+    """Create Kafka Consumer Groups."""
+    raise NotImplemented
 
 @create.command("topics")
 @click.option("topics", "--topic", "-t", multiple=True, metavar="TOPIC", help="The name of the Kafka topic. This option can be used multiple times to specify multiple topics.")
@@ -30,4 +48,6 @@ def create_topics(ctx, topics, partitions, replication_factor, config_file, conf
 
     admin_client = ctx.get("admin_client")
     topic = Topic(admin_client)
-    click.echo(json.dumps(topic.create(topics, partitions, replication_factor, config_data)))
+    results = topic.create(topics, partitions, replication_factor, config_data)
+    if results:
+        click.echo(json.dumps(results))

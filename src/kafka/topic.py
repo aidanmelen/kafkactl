@@ -14,19 +14,13 @@ class Topic():
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
         """
         self.admin_client = admin_client
-
-    def _list(self):
-        """
-        List Kafka topic metadata.
-
-        Returns:
-            dict: A dictionary representing the list of topic metadata.
-        """
-        return self.admin_client.list_topics().topics
         
-    def list(self):
+    def list(self, timeout=10):
         """
         List Kafka topic names.
+
+        Args:
+            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
             List[str]: A list of topic names if successful, otherwise a dictionary with the following keys:
@@ -34,15 +28,16 @@ class Topic():
                 - message (str): A message indicating which topic(s) failed to be created.
         """
         try:
-            topic_names = [topic for topic in self._list().keys()]
+            topics_metadata = self.admin_client.list_topics(timeout=timeout)
+            topic_names = [topic for topic in topics_metadata.topics.keys()]
             return topic_names
-        except Exception as e:
-            error_msg = {"error": str(e).strip("'"), "message": f"Failed to list topics: {', '.join(topics)}"}
+        except KafkaException as e:
+            error_msg = {"error_message": str(e)}
             return error_msg
 
     def create(self, topics, partitions, replication_factor, config_data=None):
         """
-        Create one or many Kafka topics.
+        Create one or many Kafka Topics.
 
         Args:
             topics (list[str]): A list of topic names to be created.
@@ -58,40 +53,51 @@ class Topic():
         new_topics = [NewTopic(topic, num_partitions=partitions, replication_factor=replication_factor, config=config_data) for topic in topics]
         # Call create_topics to asynchronously create topics, a dict
         # of <topic,future> is returned.
-        fs = self.admin_client.create_topics(new_topics)
+        future = self.admin_client.create_topics(new_topics)
 
         # Wait for operation to finish.
         # Timeouts are preferably controlled by passing request_timeout=15.0
         # to the create() call.
         # All futures will finish at the same time.
-        for topic, f in fs.items():
+        for topic, f in future.items():
             try:
                 return f.result()
-            except Exception as e:
-                error_msg = {"error": str(e).strip("'"), "message": f"Failed to create topics: {', '.join(topics)}"}
+            except KafkaException as e:
+                error_msg = {"error_message": str(e)}
                 return error_msg
+    
+    # def is_under_replicated(self, topic_name):
+    #     topic_metadata = self.admin_client.describe_topics([topic_name])
+    #     partitions_metadata = topic_metadata.topics[topic_name].partitions
+    #     for partition_metadata in partitions_metadata:
+    #         replication_factor = len(partition_metadata.replicas)
+    #         in_sync_replicas = len(partition_metadata.isr)
+    #         if in_sync_replicas < replication_factor:
+    #             return True
+    #     return False
             
-    def _describe_topics_status(self, topics=None):
+    def describe_topics_info(self, topics=None):
         """
-        Describe status for one or many Kafka topics.
+        Describe info for one or many Kafka Topics.
 
         Args:
             topics (dict): A dictionary of topic names and their partitions. Defaults to None.
         
         Returns:
-            dict: A dictionary containing status details for the specified topics.
+            dict: A dictionary containing info details for the specified topics.
         """
-        topics_status = {}
+        topics_info = {}
         try:
             # Loop over topics.
             for topic_name, topic in topics.items():
-                topics_status[topic_name] = {"status": {}}
+                topics_info[topic_name] = {"info": {}}
                 partitions = []
 
                 # Loop over all partitions of this topic.
                 for partition in topic.partitions.values():
                     replicas = []
                     isrs = []
+                    status = []
 
                     # Loop over all replicas of this partition.
                     for broker in partition.replicas:
@@ -114,18 +120,22 @@ class Topic():
                         'isrs': isrs,
                     })
 
-                topics_status[topic_name]["status"]["partitions"] = len(partitions)
-                topics_status[topic_name]["status"]["availability"] = partitions
-                
+
+                topics_info[topic_name]["info"]["partitions"] = len(partitions)
+                topics_info[topic_name]["info"]["availability"] = partitions
+        
+        except KafkaException as e:
+            error_msg = {"error_message": str(e)}
+            return error_msg
         except Exception as e:
-            error_msg = {"error": str(e), "message": f"Failed to describe topic: {', '.join(topics)}"}
+            error_msg = {"error_message": f"Unknown Error: {e}"}
             return error_msg
 
-        return topics_status
+        return topics_info
     
-    def _describe_topics_config(self, topics=None):
+    def describe_topics_config(self, topics=None):
         """
-        Describe configuration for one or many Kafka topics.
+        Describe configuration for one or many Kafka Topics.
 
         Args:
             topics (dict): A dictionary of topic names and their partitions. Defaults to None.
@@ -134,14 +144,15 @@ class Topic():
             dict: A dictionary containing configuration details for the specified topics.
         """
         try:
+            topic_configs[res.name] = {"config": {}}
+
             # Get the topic configurations
             resources = [ConfigResource("topic", topic) for topic in topics.keys()]
-            fs = self.admin_client.describe_configs(resources)
+            future = self.admin_client.describe_configs(resources)
 
             # Loop through each resource and its corresponding future
             topic_configs = {}
-            for res, f in fs.items():
-                topic_configs[res.name] = {"config": {}}
+            for res, f in future.items():
 
                 # Get the result of the future containing the topic configuration
                 configs = f.result()
@@ -149,46 +160,57 @@ class Topic():
                 # Loop through each configuration parameter and add it to the dictionary
                 topic_configs[res.name]["config"] = {config.name: config.value for config in configs.values()}
 
+        except KafkaException as e:
+            error_msg = {"error_message": str(e)}
+            return error_msg
         except Exception as e:
-            error_msg = {"error": str(e), "message": f"Failed to describe topic configurations: {', '.join(topics)}"}
+            error_msg = {"error_message": f"Unknown Error: {e}"}
             return error_msg
 
         return topic_configs
         
 
-    def describe(self, topics=None, status=True, config=True):
+    def describe(self, topics=None, info=True, config=True):
         """
-        Describe one or many Kafka topics.
+        Describe one or many Kafka Topics.
 
         Args:
             topics (list, optional): List of topics to describe. If None, all topics are described. Defaults to None.
-            status (bool, optional): Whether to include topic status in the output. Defaults to True.
+            info (bool, optional): Whether to include topic info in the output. Defaults to True.
             config (bool, optional): Whether to include topic configuration in the output. Defaults to True.
 
         Returns:
-            dict: A dictionary representing the topic metadata, including status and/or config. An error dictionary if both status or config are False.
+            dict: A dictionary representing the topic metadata, including info and/or config. An error dictionary if both info or config are False.
         """
-        if not (status or config):
-            error_msg = {"error": str(e), "message": f"Failed to describe topic configurations: {', '.join(topics)}. One of 'status' or 'config' is required."}
+        try:
+            if not (info or config):
+                error_msg = {"error_message": str(e)}
+                return error_msg
+
+            # List all topics when the topics argument is not set
+            if topics:
+                topics = {topic_name: topic for topic_name, topic in self.admin_client.list_topics().topics.items() if topic_name in topics}
+            else:
+                topics = self.admin_client.list_topics().topics
+
+            # Get topic info and config and deep merge the resulting dictionaries
+            topics_metadata = {}
+            if info:
+                topics_info = self.describe_topics_info(topics)
+                topics_metadata = always_merger.merge(topics_metadata, topics_info)
+
+            if config:
+                topics_config = self.describe_topics_config(topics)
+                topics_metadata = always_merger.merge(topics_metadata, topics_config)
+
+            return topics_metadata
+
+        except KafkaException as e:
+            error_msg = {"error_message": str(e)}
             return error_msg
-
-        # List all topics when the topics argument is not set
-        if topics:
-            topics = {topic_name: topic for topic_name, topic in self._list().items() if topic_name in topics}
-        else:
-            topics = self._list()
-
-        # Get topic status and config and deep merge the resulting dictionaries
-        topics_metadata = {}
-        if status:
-            topics_status = self._describe_topics_status(topics)
-            topics_metadata = always_merger.merge(topics_metadata, topics_status)
-
-        if config:
-            topics_config = self._describe_topics_config(topics)
-            topics_metadata = always_merger.merge(topics_metadata, topics_config)
-
-        return topics_metadata
+        except Exception as e:
+            error_msg = {"error_message": f"Unknown Error: {e}"}
+            return error_msg
         
     def alter(self, topics, config_data):
         """
@@ -212,19 +234,22 @@ class Topic():
                 for k, v in config_data.items():
                     resource.set_config(k, v)
                 
-            fs = self.admin_client.alter_configs(resources)
+            future = self.admin_client.alter_configs(resources)
                 
             # Wait for operation to finish.
-            for res, f in fs.items():
+            for res, f in future.items():
                 return f.result()  # empty, but raises exception on failure
 
+        except KafkaException as e:
+            error_msg = {"error_message": str(e)}
+            return error_msg
         except Exception as e:
-            error_msg = {"error": str(e), "message": f"Failed to alter topic configurations: {', '.join(topics)}"}
+            error_msg = {"error_message": f"Unknown Error: {e}"}
             return error_msg
 
     def delete(self, topics, timeout=30):
         """
-        Delete one or many Kafka topics.
+        Delete one or many Kafka Topics.
         
         Args:
             topics (list of str): The list of topic names to be deleted.
@@ -241,12 +266,12 @@ class Topic():
         # to propagate in the cluster before returning.
         #
         # Returns a dict of <topic,future>.
-        fs = self.admin_client.delete_topics(list(topics), operation_timeout=timeout)
+        future = self.admin_client.delete_topics(list(topics), operation_timeout=timeout)
 
         # Wait for operation to finish.
-        for topic, f in fs.items():
+        for topic, f in future.items():
             try:
                 return f.result()
-            except Exception as e:
-                error_msg = {"error": e, "message": f"Failed to delete topics: {', '.join(topics)}"}
+            except KafkaException as e:
+                error_msg = {"error_message": str(e)}
                 return error_msg

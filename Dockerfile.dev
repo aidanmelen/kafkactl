@@ -5,7 +5,7 @@ ARG VERSION=latest \
 FROM python:${PYTHON_VERSION} AS release
 RUN pip install --upgrade pip \
     && pip install poetry${POETRY_VERSION+==$POETRY_VERSION} \
-    apt-get update && apt-get install jq -y
+    && apt-get update && apt-get install vim jq -y
 WORKDIR /app
 RUN mkdir -p /app
 COPY . .

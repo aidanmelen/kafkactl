@@ -216,10 +216,10 @@ spec:
   containers:
   - name: kafkactl
     image: kafkactl
-    imagePullPolicy: Never
+    imagePullPolicy: Never 
     command: ["/bin/sh", "-ec", "sleep 1000000"]
     env:
-      - name: KAFKA_BOOTSTRAP_SERVERS
+      - name: KAFKACTL_BOOTSTRAP_SERVERS
         value: kafka:9092
     volumeMounts:
       - name: app

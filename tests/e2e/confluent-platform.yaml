@@ -11,6 +11,11 @@ spec:
     init: confluentinc/confluent-init-container:2.5.0
   dataVolumeCapacity: 10Gi
   logVolumeCapacity: 10Gi
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: Kafka
@@ -18,11 +23,16 @@ metadata:
   name: kafka
   namespace: confluent
 spec:
-  replicas: 3
+  replicas: 3 
   image:
     application: confluentinc/cp-server:7.3.0
     init: confluentinc/confluent-init-container:2.5.0
-  dataVolumeCapacity: 100Gi
+  dataVolumeCapacity: 10Gi
+  podTemplate:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
   metricReporter:
     enabled: true
 ---
@@ -39,6 +49,11 @@ spec:
   dependencies:
     kafka:
       bootstrapEndpoint: kafka:9071
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KsqlDB
@@ -51,6 +66,11 @@ spec:
     application: confluentinc/cp-ksqldb-server:7.3.0
     init: confluentinc/confluent-init-container:2.5.0
   dataVolumeCapacity: 10Gi
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: ControlCenter
@@ -72,6 +92,11 @@ spec:
     connect:
     - name: connect
       url: http://connect.confluent.svc.cluster.local:8083
+  podTemplate:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: SchemaRegistry
@@ -79,10 +104,15 @@ metadata:
   name: schemaregistry
   namespace: confluent
 spec:
-  replicas: 3
+  replicas: 1 
   image:
     application: confluentinc/cp-schema-registry:7.3.0
     init: confluentinc/confluent-init-container:2.5.0
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
 ---
 apiVersion: platform.confluent.io/v1beta1
 kind: KafkaRestProxy
@@ -97,6 +127,11 @@ spec:
   dependencies:
     schemaRegistry:
       url: http://schemaregistry.confluent.svc.cluster.local:8081
+  podTemplate:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
 ---
 apiVersion: v1
 kind: Pod
@@ -109,10 +144,10 @@ spec:
   containers:
   - name: kafkactl
     image: kafkactl
-    imagePullPolicy: Never
+    imagePullPolicy: Never 
     command: ["/bin/sh", "-ec", "sleep 1000000"]
     env:
-      - name: KAFKA_BOOTSTRAP_SERVERS
+      - name: KAFKACTL_BOOTSTRAP_SERVERS
         value: kafka:9092
     volumeMounts:
       - name: app
