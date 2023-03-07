@@ -10,15 +10,14 @@ class ConsumerGroup(KafkaResource):
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
         """
-        self.admin_client = admin_client
+        super().__init__(admin_client=admin_client)
         
-    def list(self, states=["STABLE"], show_simple=False, timeout=10):
+    def list(self, states=["STABLE", "EMPTY"], timeout=10):
         """
-        List Kafka Consumer Group names.
+        List Kafka Consumer Groups.
 
         Args:
             states (list[str], optional): only list consumer groups which are currently in these states.
-            show_simple (bool, optional): Show consumer groups which are type simple.
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
@@ -33,14 +32,10 @@ class ConsumerGroup(KafkaResource):
 
             consumer_groups = []
             for group in groups.valid:
-                
-                if not show_simple and group.is_simple_consumer_group:
-                        continue
-
                 consumer_groups.append({
                     "name": group.group_id,
                     "type": "simple" if group.is_simple_consumer_group else "high-level",
-                    "state": group.state.name,
+                    "state": group.state.name.lower(),
                 })
             
             # for error in groups.errors:
@@ -52,14 +47,14 @@ class ConsumerGroup(KafkaResource):
             error_msg = {"error": str(e), "message": "Failed to list consumer groups."}
             return error_msg
 
-    def create(self, topics, partitions, replication_factor, config_data=None):
+    def create(self):
         raise NotImplemented
     
-    def describe(self, topics=None, info=True, config=True):
+    def describe(self):
         raise NotImplemented
         
-    def alter(self, topics, config_data):
+    def alter(self):
         raise NotImplemented
 
-    def delete(self, topics, timeout=30):
+    def delete(successful):
         raise NotImplemented

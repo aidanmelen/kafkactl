@@ -8,10 +8,19 @@ class Broker(KafkaResource):
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
         """
-        self.admin_client = admin_client
+        super().__init__(admin_client=admin_client)
     
-    def list(self):
-        raise NotImplemented
+    def list(self, timeout=10):
+        metadata = self.admin_client.list_topics(timeout=timeout)
+
+        brokers = []
+        for b in iter(metadata.brokers.values()):
+            brokers.append({
+                "name": f"broker.{b.id}",
+                "type": "controller" if b.id ==  metadata.controller_id else "worker"
+            })
+
+        return brokers
     
     def create(self):
         raise NotImplemented

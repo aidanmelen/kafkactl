@@ -17,21 +17,32 @@ def list_acls(ctx):
     raise NotImplemented
 
 @list.command("brokers")
-@click.pass_obj
-def list_brokers(ctx):
-    """List Kafka Brokers."""
-    raise NotImplemented
-
-@list.command("groups")
-@click.option("states", "--state", "-s", type=click.Choice(["STABLE", "EMPTY"], case_sensitive=False), default=["STABLE"], multiple=True, metavar="STATES", help="Only list consumer groups which are currently in these states.")
-@click.option("--show-simple", "-S", default=False, is_flag=True, help="Show consumer groups which are type simple.")
 @click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.option("--output", "-o", type=click.Choice(["TABULATE", "JSON"], case_sensitive=False), default="TABULATE", metavar="FORMAT", help="The output format.")
 @click.pass_obj
-def list_consumer_groups(ctx, states, show_simple, timeout, output):
+def list_brokers(ctx, timeout, output):
+    """List Kafka Brokers."""
+    broker = Broker(ctx.get("admin_client"))
+    brokers = broker.list(timeout=timeout)
+
+    if output.upper() == "TABULATE":
+        headers=["NAME", "TYPE"]
+        broker_rows = [[b["name"], b["type"].capitalize()] for b in brokers]
+        click.echo(tabulate(broker_rows, headers=headers, tablefmt="plain"))
+    
+    if output.upper() == "JSON":
+        click.echo(json.dumps(brokers))
+
+
+@list.command("groups")
+@click.option("states", "--state", "-s", type=click.Choice(["STABLE", "EMPTY"], case_sensitive=False), default=["STABLE", "EMPTY"], multiple=True, metavar="STATES", help="Only list consumer groups which are currently in these states.")
+@click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
+@click.option("--output", "-o", type=click.Choice(["TABULATE", "JSON"], case_sensitive=False), default="TABULATE", metavar="FORMAT", help="The output format.")
+@click.pass_obj
+def list_consumer_groups(ctx, states, timeout, output):
     """List Kafka Consumer Groups."""
     group = ConsumerGroup(ctx.get("admin_client"))
-    groups = group.list(states=states, show_simple=show_simple, timeout=timeout)
+    groups = group.list(states=states, timeout=timeout)
 
     if output.upper() == "TABULATE":
         headers=["NAME", "TYPE", "STATE"]

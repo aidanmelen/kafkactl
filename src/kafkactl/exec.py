@@ -6,7 +6,7 @@ import json
 @click.group("exec")
 @click.pass_obj
 def exec(ctx):
-    """Exec one or many resources."""
+    """Exec an operation one or many resources."""
     pass
 
 @exec.command("acls")

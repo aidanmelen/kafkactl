@@ -8,7 +8,7 @@ class Producer(KafkaResource):
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
         """
-        self.admin_client = admin_client
+        super().__init__(admin_client=admin_client)
 
     def list(self):
         raise NotImplemented
