@@ -5,6 +5,7 @@ from .create import create
 from .describe import describe
 from .alter import alter
 from .delete import delete
+from .exec import exec
 
 import click
 
@@ -26,3 +27,4 @@ cli.add_command(create)
 cli.add_command(describe)
 cli.add_command(alter)
 cli.add_command(delete)
+cli.add_command(exec)

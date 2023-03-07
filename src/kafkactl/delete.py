@@ -29,7 +29,7 @@ def delete_consumer_groups(ctx):
 
 @delete.command("topics")
 @click.option("topics", "--topic", "-t", multiple=True, metavar="TOPIC", help="The name of the Kafka topic. This option can be used multiple times to specify multiple topics.")
-@click.option("--timeout", "-to", default=30, metavar="SECONDS", type=int, help="The timeout in seconds.")
+@click.option("--timeout", "-T", default=30, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.pass_obj
 def delete_topics(ctx, topics, timeout):
     """Delete Kafka topics."""

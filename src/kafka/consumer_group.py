@@ -1,10 +1,8 @@
 from confluent_kafka import (KafkaException, ConsumerGroupTopicPartitions,
                              ConsumerGroupState)
-# from confluent_kafka.admin import (AdminClient, NewTopic, NewPartitions, ConfigResource, ConfigSource,
-#                                    AclBinding, AclBindingFilter, ResourceType, ResourcePatternType, AclOperation,
-#                                    AclPermissionType)
+from .kafka_resource import KafkaResource
 
-class ConsumerGroup():
+class ConsumerGroup(KafkaResource):
     def __init__(self, admin_client):
         """
         Initialize a new instance of the Consumer Group class.
@@ -14,12 +12,13 @@ class ConsumerGroup():
         """
         self.admin_client = admin_client
         
-    def list(self, states=["STABLE", "EMPTY"], timeout=10):
+    def list(self, states=["STABLE"], show_simple=False, timeout=10):
         """
         List Kafka Consumer Group names.
 
         Args:
             states (list[str], optional): only list consumer groups which are currently in these states.
+            show_simple (bool, optional): Show consumer groups which are type simple.
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
@@ -32,15 +31,17 @@ class ConsumerGroup():
             future = self.admin_client.list_consumer_groups(states=states, request_timeout=timeout)
             groups = future.result()
 
-            consumer_groups = {}
+            consumer_groups = []
             for group in groups.valid:
-                if group.group_id == "":
-                    continue
+                
+                if not show_simple and group.is_simple_consumer_group:
+                        continue
 
-                consumer_groups[group.group_id] = {
+                consumer_groups.append({
+                    "name": group.group_id,
                     "type": "simple" if group.is_simple_consumer_group else "high-level",
                     "state": group.state.name,
-                }
+                })
             
             # for error in groups.errors:
             #     print(error)

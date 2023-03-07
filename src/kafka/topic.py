@@ -5,10 +5,12 @@ from confluent_kafka.admin import (AdminClient, NewTopic, NewPartitions, ConfigR
                                    AclPermissionType)
 from deepmerge import always_merger
 
-class Topic():
+from .kafka_resource import KafkaResource
+
+class Topic(KafkaResource):
     def __init__(self, admin_client):
         """
-        Initialize a new instance of the Topic class.
+        The Kafka Topic class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
@@ -17,7 +19,7 @@ class Topic():
         
     def list(self, timeout=10):
         """
-        List Kafka topic names.
+        List Kafka Topics.
 
         Args:
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
@@ -29,8 +31,8 @@ class Topic():
         """
         try:
             topics_metadata = self.admin_client.list_topics(timeout=timeout)
-            topic_names = [topic for topic in topics_metadata.topics.keys()]
-            return topic_names
+            topics = [{"name": str(topic), "partitions": len(topic.partitions)} for topic in topics_metadata.topics.values()]
+            return topics
         except KafkaException as e:
             error_msg = {"error_message": str(e)}
             return error_msg
