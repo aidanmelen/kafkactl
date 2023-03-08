@@ -22,5 +22,5 @@ class Acl(KafkaResource):
     def alter(self):
         raise NotImplemented
 
-    def delete(successful):
+    def delete(self):
         raise NotImplemented

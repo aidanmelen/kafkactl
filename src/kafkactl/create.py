@@ -1,4 +1,4 @@
-from kafka.topic import Topic
+from kafka import (Topic, Broker, Topic, ConsumerGroup, Acl, Consumer, Producer)
 
 import click
 import json
@@ -13,12 +13,6 @@ def create(ctx):
 @click.pass_obj
 def create_acls(ctx):
     """Create Kafka ACLs."""
-    raise NotImplemented
-
-@create.command("brokers")
-@click.pass_obj
-def create_brokers(ctx):
-    """Create Kafka Brokers."""
     raise NotImplemented
 
 @create.command("groups")

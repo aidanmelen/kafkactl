@@ -53,13 +53,14 @@ def list_consumer_groups(ctx, states, timeout, output):
         click.echo(json.dumps(groups))
 
 @list.command("topics")
+@click.option("--show-internal/--hide-internal", "-s", default=True, is_flag=True, help="Whether to show internal topics.")
 @click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.option("--output", "-o", type=click.Choice(["TABULATE", "JSON"], case_sensitive=False), default="TABULATE", metavar="FORMAT", help="The output format.")
 @click.pass_obj
-def list_topics(ctx, timeout, output):
+def list_topics(ctx, show_internal, timeout, output):
     """List Kafka topics."""
     topic = Topic(ctx.get("admin_client"))
-    topics = topic.list(timeout=timeout)
+    topics = topic.list(show_internal=show_internal, timeout=timeout)
     
     if output.upper() == "TABULATE":
         headers=["NAME", "PARTITIONS"]

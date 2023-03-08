@@ -1,6 +1,4 @@
-from .kafka_resource import KafkaResource
-
-class Producer(KafkaResource):
+class Producer():
     def __init__(self, admin_client):
         """
         The Kafka Producer class.
@@ -8,19 +6,7 @@ class Producer(KafkaResource):
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
         """
-        super().__init__(admin_client=admin_client)
+        self.admin_client = admin_client
 
-    def list(self):
-        raise NotImplemented
-    
-    def create(self):
-        raise NotImplemented
-    
-    def describe(self):
-        raise NotImplemented
-        
-    def alter(self):
-        raise NotImplemented
-
-    def delete(successful):
+    def produce(self):
         raise NotImplemented

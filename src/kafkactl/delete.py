@@ -1,4 +1,4 @@
-from kafka.topic import Topic
+from kafka import (Topic, Broker, Topic, ConsumerGroup, Acl, Consumer, Producer)
 
 import click
 import json
@@ -13,12 +13,6 @@ def delete(ctx):
 @click.pass_obj
 def delete_acls(ctx):
     """Delete Kafka ACLs."""
-    raise NotImplemented
-
-@delete.command("brokers")
-@click.pass_obj
-def delete_brokers(ctx):
-    """Delete Kafka Brokers."""
     raise NotImplemented
 
 @delete.command("groups")
