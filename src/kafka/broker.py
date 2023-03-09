@@ -67,7 +67,7 @@ class Broker(KafkaResource):
 
         return brokers
 
-    def get_cluster_config(self, timeout=10):
+    def get_cluster_defaults(self, timeout=10):
         """
         Get configuration for the Kafka Cluster.
 

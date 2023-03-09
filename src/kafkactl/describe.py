@@ -18,11 +18,21 @@ def describe_acls(ctx):
 
 @describe.command("brokers")
 @click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
+@click.option("--output", "-o", type=click.Choice(["TABULATE", "JSON"], case_sensitive=False), default="TABULATE", metavar="FORMAT", help="The output format.")
 @click.pass_obj
-def describe_brokers(ctx, timeout):
+def describe_brokers(ctx, timeout, output):
     """Describe Kafka Brokers."""
     broker = Broker(ctx.get("admin_client"))
-    click.echo(json.dumps(broker.describe(timeout=timeout)))
+    brokers_overview = broker.describe(timeout=timeout)
+
+    if output.upper() == "TABULATE":
+        headers=["BROKERS", "TOPICS", "PARTITIONS", "REPLICAS", "CONSUMER_GROUPS"]
+        broker_role
+        click.echo(tabulate(group_rows, headers=headers, tablefmt="plain"))
+
+    
+    if output.upper() == "JSON":
+        click.echo(json.dumps(brokers_overview))
 
 @describe.command("groups")
 @click.option("groups", "--group", "-g", multiple=True, metavar="GROUP", help="The name of the Kafka Consumer Group. This option can be used multiple times to specify multiple groups.")

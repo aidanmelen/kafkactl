@@ -151,7 +151,6 @@ class ConsumerGroup(KafkaResource):
                     "port": group_metadata.coordinator.port
                 },
                 "members": members,
-                "offsets": offsets
             }
 
         return groups_info
