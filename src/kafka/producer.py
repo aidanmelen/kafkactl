@@ -1,7 +1,7 @@
 class Producer():
     def __init__(self, admin_client):
         """
-        The Kafka Producer class.
+        The Kafka Producer wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.

@@ -10,7 +10,7 @@ from .broker import Broker
 class Topic(KafkaResource):
     def __init__(self, admin_client):
         """
-        The Kafka Topic class.
+        The Kafka Topic wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.

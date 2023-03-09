@@ -3,7 +3,7 @@ from .kafka_resource import KafkaResource
 class Acl(KafkaResource):
     def __init__(self, admin_client):
         """
-        The Kafka Access Control List (ACL) class.
+        The Kafka Access Control List (ACL) wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.

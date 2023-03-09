@@ -6,7 +6,7 @@ from .consumer_group import ConsumerGroup
 class Broker(KafkaResource):
     def __init__(self, admin_client):
         """
-        The Kafka Broker class.
+        The Kafka Broker wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.

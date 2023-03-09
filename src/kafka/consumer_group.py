@@ -8,7 +8,7 @@ from .kafka_resource import KafkaResource
 class ConsumerGroup(KafkaResource):
     def __init__(self, admin_client):
         """
-        Initialize a new instance of the Consumer Group class.
+        Initialize a new instance of the Consumer Group wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
@@ -158,18 +158,18 @@ class ConsumerGroup(KafkaResource):
     def alter(self):
         raise NotImplemented
 
-    def delete(self, consumer_groups, timeout=30):
+    def delete(self, group, timeout=30):
         """
         Delete Kafka Consumer Groups.
 
         Args:
-            consumer_groups (list[str]): The list of consumer group names to be deleted.
+            group (str): The consumer group name to be deleted.
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
             None
         """
-        future = self.admin_client.delete_consumer_groups(consumer_groups, request_timeout=timeout)
+        future = self.admin_client.delete_consumer_groups([group], request_timeout=timeout)
 
         for group_id, f in future.items():
             f.result()

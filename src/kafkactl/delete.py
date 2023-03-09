@@ -1,4 +1,4 @@
-from kafka import (Topic, Broker, Topic, ConsumerGroup, Acl, Consumer, Producer)
+from kafka import (Topic, Broker, ConsumerGroup, Acl, Consumer, Producer)
 
 import click
 import json
@@ -19,10 +19,10 @@ def delete_acls(ctx):
 @click.argument("group")
 @click.option("--timeout", "-T", default=30, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.pass_obj
-def delete_topic(ctx, group, timeout):
+def delete_group(ctx, group, timeout):
     """Delete a Kafka Group."""
-    g = Group(ctx.get("admin_client"))
-    results = g.delete(group, timeout)
+    g = ConsumerGroup(ctx.get("admin_client"))
+    results = g.delete(group, timeout=timeout)
     if results:
         click.echo(json.dumps(results))
 
@@ -33,6 +33,6 @@ def delete_topic(ctx, group, timeout):
 def delete_topic(ctx, topic, timeout):
     """Delete a Kafka topic."""
     t = Topic(ctx.get("admin_client"))
-    results = t.delete(topic, timeout)
+    results = t.delete(topic, timeout=timeout)
     if results:
         click.echo(json.dumps(results))

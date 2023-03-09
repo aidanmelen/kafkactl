@@ -2,7 +2,7 @@
 class Consumer():
     def __init__(self, admin_client):
         """
-        The Kafka Consumer class.
+        The Kafka Consumer wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
