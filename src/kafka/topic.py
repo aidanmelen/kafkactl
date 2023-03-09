@@ -3,7 +3,6 @@ from confluent_kafka import (KafkaException, ConsumerGroupTopicPartitions,
 from confluent_kafka.admin import (AdminClient, NewTopic, NewPartitions, ConfigResource, ConfigSource,
                                    AclBinding, AclBindingFilter, ResourceType, ResourcePatternType, AclOperation,
                                    AclPermissionType)
-from deepmerge import always_merger
 
 from .kafka_resource import KafkaResource
 from .broker import Broker
@@ -39,12 +38,12 @@ class Topic(KafkaResource):
 
         return topics
 
-    def create(self, topics, partitions, replication_factor, config_data=None):
+    def create(self, topic, partitions, replication_factor, config_data=None):
         """
         Create one or many Kafka Topics.
 
         Args:
-            topics (list[str]): A list of topic names to be created.
+            topic (str): A topic name to be created.
             partitions (int): The number of partitions per topic.
             replication_factor (int): The number of replicas per partition.
             config_data (dict): Configuration data for the topic.
@@ -54,29 +53,42 @@ class Topic(KafkaResource):
                 - error (str): A description of the error that occurred.
                 - message (str): A message indicating which topic(s) failed to be created.
         """
-        new_topics = [NewTopic(topic, num_partitions=partitions, replication_factor=replication_factor, config=config_data) for topic in topics]
+        new_topics = [NewTopic(topic, num_partitions=partitions, replication_factor=replication_factor, config=config_data)]
         future = self.admin_client.create_topics(new_topics)
 
         for topic, f in future.items():
             return f.result()
-            
-    def describe_topics_info(self, topics_metadata):
+
+    def describe(self, topics=None, timeout=10):
         """
-        Describe info for one or many Kafka Topics.
+        Describe one or many Kafka Topics.
 
         Args:
-            topics_metadata (dict): A dictionary of topic names and their partitions.
-        
+            topics (list, optional): List of topics to describe. If None, all topics are described. Defaults to None.
+            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
+
         Returns:
-            dict: The info details for the specified topics.
+            dict: The topic metadata, including info and/or config. An error dictionary if both info or config are False.
         
         Raises:
+            KafkaException: These topics do not exist.
             KafkaError: If there is an error during the describe process.
         """
+        # List all topics metadata when the topics argument is not set
+        if topics:
+            topics_metadata = {
+                topic: metadata for topic, metadata in self.admin_client.list_topics(timeout=timeout).topics.items() if topic in topics
+            }
+
+            if not topics_metadata:
+                raise KafkaException(f"Failed to describe topics. These topics do not exist: {','.join(topics)}")
+        else:
+            topics_metadata = self.admin_client.list_topics(timeout=timeout).topics
+
         topics_info = {}
         # Loop over topics.
         for topic_name, topic in topics_metadata.items():
-            topics_info[topic_name] = {"info": {}}
+            topics_info[topic_name] = {}
             partitions = []
 
             # Loop over all partitions of this topic.
@@ -104,20 +116,22 @@ class Topic(KafkaResource):
                     'leader': partition.leader,
                     'replicas': replicas,
                     'isrs': isrs,
+                    'status': "AVAILABLE" if len(isrs) == len(replicas) else "UNAVAILABLE",
                 })
 
-            topics_info[topic_name]["info"]["partitions"] = len(partitions)
-            topics_info[topic_name]["info"]["replicas"] = len(replicas)
-            topics_info[topic_name]["info"]["availability"] = partitions
+            topics_info[topic_name]["partitions"] = len(partitions)
+            topics_info[topic_name]["replicas"] = len(replicas)
+            topics_info[topic_name]["availability"] = partitions
         
         return topics_info
-        
-    def describe_topics_config(self, topics_metadata):
+
+    def get_configs(self, topics=None, timeout=10):
         """
-        Describe configuration for one or many Kafka Topics.
+        Get configuration for one or many Kafka Topics.
 
         Args:
-            topics_metadata (dict): A dictionary of topic names and their partitions.
+            topics (list, optional): List of topics to describe. If None, all topics are described. Defaults to None.
+            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
             dict: The configuration for the specified topics.
@@ -125,64 +139,35 @@ class Topic(KafkaResource):
         Raises:
             KafkaError: If there is an error during the describe process.
         """
+        # List all topics metadata when the topics argument is not set
+        if topics:
+            response_metadata = {
+                topic: metadata for topic, metadata in self.admin_client.list_topics(timeout=timeout).topics.items() if topic in topics
+            }
+
+            if not response_metadata:
+                raise KafkaException(f"Failed to describe topics. These topics do not exist: {','.join(topics)}")
+        else:
+            response_metadata = self.admin_client.list_topics(timeout=timeout).topics
+
         topic_configs = {}
 
         # Get the topic configurations
-        resources = [ConfigResource("topic", t) for t in topics_metadata.keys()]
+        resources = [ConfigResource("topic", t) for t in response_metadata.keys()]
         future = self.admin_client.describe_configs(resources)
 
         # Loop through each resource and its corresponding future
         topic_configs = {}
-        for res, f in future.items():
+        for topic, f in future.items():
 
             # Get the result of the future containing the topic configuration
-            configs = f.result()
+            response_metadata = f.result()
 
             # Loop through each configuration parameter and add it to the dictionary
-            topic_configs[res.name] = {}
-            topic_configs[res.name]["config"] = {config.name: config.value for config in configs.values()}
+            topic_configs[topic.name] = {}
+            topic_configs[topic.name] = {m.name: m.value if m.value != "" and m.value != None else "-" for m in response_metadata.values()}
 
         return topic_configs
-
-    def describe(self, topics=None, info=True, config=False, timeout=10):
-        """
-        Describe one or many Kafka Topics.
-
-        Args:
-            topics (list, optional): List of topics to describe. If None, all topics are described. Defaults to None.
-            info (bool, optional): Whether to show topic info in the output. Defaults to True.
-            config (bool, optional): Whether to show topic configuration in the output. Defaults to False.
-            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
-
-        Returns:
-            dict: The topic metadata, including info and/or config. An error dictionary if both info or config are False.
-        
-        Raises:
-            Exception: If neither info or config are specified.
-            KafkaError: If there is an error during the describe process.
-        """
-        if not (info or config):
-            raise Exception("Failed to describe topics. One of info and/or config is required.")
-
-        # List all topics metadata when the topics argument is not set
-        if topics:
-            topics_metadata = {
-                topic_name: topic for topic_name, topic in self.admin_client.list_topics(timeout=timeout).topics.items() if topic_name in topics
-            }
-        else:
-            topics_metadata = self.admin_client.list_topics(timeout=timeout).topics
-
-        # Get topic info and config and deep merge the resulting dictionaries
-        topics = {}
-        if info:
-            topics_info = self.describe_topics_info(topics_metadata)
-            topics = always_merger.merge(topics, topics_info)
-
-        if config:
-            topics_config = self.describe_topics_config(topics_metadata)
-            topics = always_merger.merge(topics, topics_config)
-
-        return topics
 
     def alter(self, topics, config_data):
         """
@@ -212,12 +197,12 @@ class Topic(KafkaResource):
         for res, f in future.items():
             return f.result()  # empty, but raises exception on failure
 
-    def delete(self, topics, timeout=30):
+    def delete(self, topic, timeout=30):
         """
-        Delete one or many Kafka Topics.
+        Delete a Kafka Topic.
         
         Args:
-            topics (list of str): The list of topic names to be deleted.
+            topic (str): The topic name to be deleted.
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
@@ -226,8 +211,7 @@ class Topic(KafkaResource):
         Raises:
             KafkaError: If there is an error during the deletion process.
         """
-        future = self.admin_client.delete_topics(list(topics), operation_timeout=timeout)
+        future = self.admin_client.delete_topics([topic], operation_timeout=timeout)
         
-        # Wait for operation to finish.
         for topic, f in future.items():
             return f.result()

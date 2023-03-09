@@ -1,0 +1,8 @@
+contexts:
+  my-kafka:
+    name: my-kafka
+    brokers:
+      - kafka:9092
+    clientVersion: ""
+current-context: my-kafka
+config-version: 1

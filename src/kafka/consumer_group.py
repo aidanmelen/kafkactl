@@ -1,6 +1,9 @@
 from confluent_kafka import (KafkaException, ConsumerGroupTopicPartitions,
-                             ConsumerGroupState)
+                             ConsumerGroupState, Consumer, TopicPartition,
+                             OFFSET_INVALID)
+from deepmerge import always_merger
 from .kafka_resource import KafkaResource
+
 
 class ConsumerGroup(KafkaResource):
     def __init__(self, admin_client):
@@ -34,7 +37,7 @@ class ConsumerGroup(KafkaResource):
             consumer_groups.append({
                 "name": group.group_id,
                 "type": "simple" if group.is_simple_consumer_group else "high-level",
-                "state": group.state.name.lower(),
+                "state": group.state.name,
             })
         
         # for error in groups.errors:
@@ -42,10 +45,51 @@ class ConsumerGroup(KafkaResource):
 
         return consumer_groups
 
-    def create(self):
+    def create(self, bootstrap_servers, group):
         raise NotImplemented
-    
-    def describe(self, groups=None, timeout=10):
+
+    def get_offsets(self, brokers: str, group: str, topics: str) -> dict:
+        # Create consumer.
+        # This consumer will not join the group, but the group.id is required by
+        # committed() to know which group to get offsets for.
+        consumer = Consumer({'bootstrap.servers': brokers, 'group.id': group})
+
+        result = {}
+
+        # Query committed offsets for this group and the given partitions
+        committed = consumer.committed(topics, timeout=10)
+
+        for partition in committed:
+            # Get the partitions low and high watermark offsets.
+            (lo, hi) = consumer.get_watermark_offsets(partition, timeout=10, cached=False)
+
+            if partition.offset == OFFSET_INVALID:
+                current_offset = "-"
+            else:
+                current_offset = "%d" % (partition.offset)
+
+            if hi < 0:
+                lag = "no hwmark"  # Unlikely
+            elif partition.offset < 0:
+                # No committed offset, show total message count as lag.
+                # The actual message count may be lower due to compaction
+                # and record deletions.
+                lag = "%d" % (hi - lo)
+            else:
+                lag = "%d" % (hi - partition.offset)
+
+            result[partition.topic] = {}
+            result[partition.topic][partition.partition] = {
+                "current_offset": current_offset,
+                "log_end_offset": hi,
+                "lag": lag
+            }
+
+        consumer.close()
+
+        return result
+   
+    def describe(self, groups=None, brokers=None, timeout=10):
         """
         Describe Kafka Consumer Groups.
 
@@ -61,35 +105,56 @@ class ConsumerGroup(KafkaResource):
             groups = [group["name"] for group in self.list(timeout=timeout)]
 
         future = self.admin_client.describe_consumer_groups(groups, request_timeout=timeout)
-        groups = {}
+        
+        groups_info = {}
 
+        # Describe consumer groups
         for group_id, f in future.items():
             group_metadata = f.result()
             members = []
-            for member in group_metadata.members:
-                member_dict = {
-                    "id": member.member_id,
-                    "host": member.host,
-                    "client_id": member.client_id,
-                    "group_instance_id": member.group_instance_id,
-                    "assignments": [(tp.topic, tp.partition) for tp in member.assignment.topic_partitions] if member.assignment else []
-                }
-                members.append(member_dict)
+            for m in group_metadata.members:
 
-            groups[group_id] = {
-                "group_id": group_metadata.group_id,
+                topic_partitions = []
+                offsets = []
+                if m.assignment:
+
+                    for tp in m.assignment.topic_partitions:
+
+                        offsets = self.get_offsets(brokers, group_id, [tp])
+
+                        topic_partitions.append({
+                            "topic": tp.topic,
+                            "partition": tp.partition,
+                            "current_offset": offsets[tp.topic][tp.partition]["current_offset"],
+                            "log_end_offset": offsets[tp.topic][tp.partition]["log_end_offset"],
+                            "lag": offsets[tp.topic][tp.partition]["lag"]
+                        })
+
+
+                member = {
+                    "id": m.member_id,
+                    "host": m.host,
+                    "client_id": m.client_id,
+                    "group_instance_id": m.group_instance_id,
+                    "assignments": topic_partitions,
+                }
+                members.append(member)
+
+
+            groups_info[group_id] = {
                 "is_simple_consumer_group": group_metadata.is_simple_consumer_group,
-                "state": group_metadata.state.name.lower(),
+                "state": group_metadata.state.name,
                 "partition_assignor": group_metadata.partition_assignor,
                 "coordinator": {
                     "id": group_metadata.coordinator.id,
                     "host": group_metadata.coordinator.host,
                     "port": group_metadata.coordinator.port
                 },
-                "members": members
+                "members": members,
+                "offsets": offsets
             }
-        
-        return groups
+
+        return groups_info
         
     def alter(self):
         raise NotImplemented
@@ -107,10 +172,5 @@ class ConsumerGroup(KafkaResource):
         """
         future = self.admin_client.delete_consumer_groups(consumer_groups, request_timeout=timeout)
 
-        # Wait for operation to finish.
         for group_id, f in future.items():
-            try:
-                f.result()
-                print("Deleted group with id '" + group_id + "' successfully")
-            except KafkaException as e:
-                print("Error deleting group id '{}': {}".format(group_id, e))
+            f.result()

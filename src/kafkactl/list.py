@@ -26,13 +26,12 @@ def list_brokers(ctx, timeout, output):
     brokers = broker.list(timeout=timeout)
 
     if output.upper() == "TABULATE":
-        headers=["NAME", "TYPE"]
+        headers=["BROKER", "TYPE"]
         broker_rows = [[b["name"], b["type"].capitalize()] for b in brokers]
         click.echo(tabulate(broker_rows, headers=headers, tablefmt="plain"))
     
     if output.upper() == "JSON":
         click.echo(json.dumps(brokers))
-
 
 @list.command("groups")
 @click.option("states", "--state", "-s", type=click.Choice(["STABLE", "EMPTY"], case_sensitive=False), default=["STABLE", "EMPTY"], multiple=True, metavar="STATES", help="Only list consumer groups which are currently in these states.")
@@ -45,7 +44,7 @@ def list_consumer_groups(ctx, states, timeout, output):
     groups = group.list(states=states, timeout=timeout)
 
     if output.upper() == "TABULATE":
-        headers=["NAME", "TYPE", "STATE"]
+        headers=["GROUP", "TYPE", "STATE"]
         group_rows = [[g["name"], g["type"].capitalize(), g["state"].capitalize()] for g in groups]
         click.echo(tabulate(group_rows, headers=headers, tablefmt="plain"))
     
@@ -63,7 +62,7 @@ def list_topics(ctx, show_internal, timeout, output):
     topics = topic.list(show_internal=show_internal, timeout=timeout)
     
     if output.upper() == "TABULATE":
-        headers=["NAME", "PARTITIONS"]
+        headers=["TOPIC", "PARTITION"]
         topic_rows = [[t["name"], t["partitions"]] for t in topics]
         click.echo(tabulate(topic_rows, headers=headers, tablefmt="plain"))
     
