@@ -26,8 +26,8 @@ def list_brokers(ctx, timeout, output):
     brokers = broker.list(timeout=timeout)
 
     if output.upper() == "TABULATE":
-        headers=["BROKER", "TYPE"]
-        broker_rows = [[b["name"], b["type"].capitalize()] for b in brokers]
+        headers=["BROKER", "TYPE", "ENDPOINT"]
+        broker_rows = [[b["name"], b["type"].capitalize(), b["endpoint"]] for b in brokers]
         click.echo(tabulate(broker_rows, headers=headers, tablefmt="plain"))
     
     if output.upper() == "JSON":

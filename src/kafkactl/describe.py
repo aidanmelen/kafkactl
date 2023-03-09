@@ -27,9 +27,10 @@ def describe_brokers(ctx, timeout, output):
 
     if output.upper() == "TABULATE":
         headers=["BROKERS", "TOPICS", "PARTITIONS", "REPLICAS", "CONSUMER_GROUPS"]
-        broker_role
-        click.echo(tabulate(group_rows, headers=headers, tablefmt="plain"))
-
+        broker_rows = [
+            [brokers_overview["brokers"], brokers_overview["topics"], brokers_overview["partitions"], brokers_overview["replicas"], brokers_overview["consumer_groups"]]
+        ]
+        click.echo(tabulate(broker_rows, headers=headers, tablefmt="plain"))
     
     if output.upper() == "JSON":
         click.echo(json.dumps(brokers_overview))
@@ -72,11 +73,11 @@ def describe_topics(ctx, topics, timeout, output):
     topics = topic.describe(topics, timeout=timeout)
 
     if output.upper() == "TABULATE":
-        headers=["TOPIC", "PARTITION", "LEADER", "REPLICAS", "IN-SYNC-REPLICAS"]
+        headers=["TOPIC", "STATUS", "PARTITION", "LEADER", "REPLICAS", "IN-SYNC-REPLICAS"]
         topic_rows = []
         for topic, metadata in topics.items():
             for a in metadata.get("availability", []):
-                topic_rows.append([topic, a["id"], a["leader"], str(a["replicas"]), str(a["isrs"])])
+                topic_rows.append([topic, a["status"].capitalize(), a["id"], a["leader"], str(a["replicas"]), str(a["isrs"])])
             
         click.echo(tabulate(topic_rows, headers=headers, tablefmt="plain"))
 

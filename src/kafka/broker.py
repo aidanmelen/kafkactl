@@ -17,10 +17,11 @@ class Broker(KafkaResource):
         metadata = self.admin_client.list_topics(timeout=timeout)
 
         brokers = []
-        for b in iter(metadata.brokers.values()):
+        for broker_id, broker_metadata in metadata.brokers.items():
             brokers.append({
-                "name": f"broker.{b.id}",
-                "type": "controller" if b.id ==  metadata.controller_id else "worker",
+                "name": broker_id,
+                "type": "controller" if broker_id == metadata.controller_id else "worker",
+                "endpoint": f"{broker_metadata.host}:{broker_metadata.port}"
             })
 
         return brokers
@@ -41,14 +42,14 @@ class Broker(KafkaResource):
         Raises:
             KafkaError: If there is an error during the describe process.
         """
-        brokers_metadata = self.admin_client.list_topics(timeout=timeout)
+        metadata = self.admin_client.list_topics(timeout=timeout)
         
-        brokers = {}
+        brokers_info = {}
         topics = []
         partitions = []
         replicas = []
         
-        for topic_name, topic in brokers_metadata.topics.items():
+        for topic_name, topic in metadata.topics.items():
             topics.append(topic)
 
             for partition in topic.partitions.values():
@@ -57,15 +58,17 @@ class Broker(KafkaResource):
                 for broker in partition.replicas:
                     replicas.append(replicas)
         
+        
         group = ConsumerGroup(self.admin_client)
         groups = group.list(timeout=timeout)
         
-        brokers["topics"] = len(topics)
-        brokers["partitions"] = len(partitions)
-        brokers["replicas"] = len(replicas)
-        brokers["consumer_groups"] = len(groups)
+        brokers_info["brokers"] = len(metadata.brokers.values())
+        brokers_info["topics"] = len(topics)
+        brokers_info["partitions"] = len(partitions)
+        brokers_info["replicas"] = len(replicas)
+        brokers_info["consumer_groups"] = len(groups)
 
-        return brokers
+        return brokers_info
 
     def get_cluster_defaults(self, timeout=10):
         """
@@ -77,8 +80,8 @@ class Broker(KafkaResource):
         Raises:
             KafkaError: If there is an error during the describe process.
         """
-        brokers_metadata = self.admin_client.list_topics(timeout=timeout)
-        broker_id = str(list(brokers_metadata.brokers.keys())[0])
+        metadata = self.admin_client.list_topics(timeout=timeout)
+        broker_id = str(list(metadata.brokers.keys())[0])
         resources = [ConfigResource("broker", broker_id)]
         future = self.admin_client.describe_configs(resources)
 

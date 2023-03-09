@@ -116,7 +116,7 @@ class Topic(KafkaResource):
                     'leader': partition.leader,
                     'replicas': replicas,
                     'isrs': isrs,
-                    'status': "AVAILABLE" if len(isrs) == len(replicas) else "UNAVAILABLE",
+                    'status': "HEALTHY" if len(isrs) == len(replicas) else "UNHEALTHY",
                 })
 
             topics_info[topic_name]["partitions"] = len(partitions)
