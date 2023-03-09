@@ -59,6 +59,7 @@ class TestTopic(unittest.TestCase):
         topics = self.topic.get_configs(topics=["topic1", "topic2"])
 
         self.admin_client.assert_has_calls([
+            # list topics and then filter for the provided topics
             call.list_topics(timeout=10),
             call.list_topics().topics.items(),
             call.list_topics().topics.items().__iter__(),
@@ -68,12 +69,16 @@ class TestTopic(unittest.TestCase):
         ])
 
         # assert that list_topics is called when the topics argument is not specified
-        topics = self.topic.describe(timeout=5)
+        topics = self.topic.get_configs(timeout=5)
 
         self.admin_client.assert_has_calls([
+            # list topics because there were no provided topics
             call.list_topics(timeout=5),
-            call.list_topics().topics.items(),
-            call.list_topics().topics.items().__iter__()
+            call.list_topics().topics.keys(),
+            call.list_topics().topics.keys().__iter__(),
+            call.describe_configs([]),
+            call.describe_configs().items(),
+            call.describe_configs().items().__iter__()
         ])
     
     def test_alter(self):
