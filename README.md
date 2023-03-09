@@ -58,19 +58,11 @@ remote.log.manager.thread.pool.size                10
 confluent.tier.metadata.request.timeout.ms         30000
 ```
 
-Note that all commands support the `--output/-o json` to format the output as JSON. For example,
+Note that all commands support the `--output/-o json` to format the output as JSON and use the `jq` to interact with the results. For example,
 
 ```console
-$ kafkactl get cluster-defaults --output json | jq
-{
-  "sasl.oauthbearer.jwks.endpoint.refresh.ms": "3600000",
-  "remote.log.metadata.manager.listener.name": null,
-  "controller.socket.timeout.ms": "30000",
-  ...
-  "confluent.balancer.max.replicas": "2147483647",
-  "queued.max.request.bytes": "-1",
-  "confluent.max.connection.creation.rate.per.ip": "2147483647"
-}
+$ kafkactl get cluster-defaults --output json | jq '."min.insync.replicas"'
+"2"
 ```
 
 ### Topics
