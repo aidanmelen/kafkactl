@@ -61,7 +61,7 @@ confluent.tier.metadata.request.timeout.ms         30000
 Note that all commands support the `--output/-o json` to format the output as JSON. For example,
 
 ```console
-kafkactl get cluster-defaults --output json | jq
+$ kafkactl get cluster-defaults --output json | jq
 {
   "sasl.oauthbearer.jwks.endpoint.refresh.ms": "3600000",
   "remote.log.metadata.manager.listener.name": null,
