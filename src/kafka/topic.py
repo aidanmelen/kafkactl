@@ -38,7 +38,7 @@ class Topic(KafkaResource):
 
         return topics
 
-    def create(self, topic, partitions, replication_factor, config_data=None):
+    def create(self, topic, partitions, replication_factor, config_data={}):
         """
         Create one or many Kafka Topics.
 
@@ -79,9 +79,6 @@ class Topic(KafkaResource):
             topics_metadata = {
                 topic: metadata for topic, metadata in self.admin_client.list_topics(timeout=timeout).topics.items() if topic in topics
             }
-
-            if not topics_metadata:
-                raise KafkaException(f"Failed to describe topics. These topics do not exist: {','.join(topics)}")
         else:
             topics_metadata = self.admin_client.list_topics(timeout=timeout).topics
 
@@ -144,9 +141,6 @@ class Topic(KafkaResource):
             response_metadata = {
                 topic: metadata for topic, metadata in self.admin_client.list_topics(timeout=timeout).topics.items() if topic in topics
             }
-
-            if not response_metadata:
-                raise KafkaException(f"Failed to describe topics. These topics do not exist: {','.join(topics)}")
         else:
             response_metadata = self.admin_client.list_topics(timeout=timeout).topics
 
@@ -169,12 +163,12 @@ class Topic(KafkaResource):
 
         return topic_configs
 
-    def alter(self, topics, config_data):
+    def alter(self, topic, config_data):
         """
-        Alter configuration atomically for one or many topics, replacing non-specified configuration properties with their default values.
+        Alter configuration atomically for a Kafka Topic, replacing non-specified configuration properties with the cluster default values.
 
         Args:
-            topics (list[str]): A list of topic names to be altered.
+            topic (str): The topic name to be altered.
             config_data (Optional[Dict[str, Union[str, int]]]): Configuration data for the topic.
 
         Returns:
@@ -183,15 +177,20 @@ class Topic(KafkaResource):
         Raises:
             KafkaError: If there is an error during the alteration process.
         """
-        resources = []
-        for topic in topics:
-            resource = ConfigResource("topic", topic)
-            resources.append(resource)
 
-            for k, v in config_data.items():
-                resource.set_config(k, v)
+        resource = ConfigResource("topic", topic)
+        for k, v in config_data.items():
+            resource.set_config(k, v)
+
+        # resources = []
+        # for topic in topics:
+        #     resource = ConfigResource("topic", topic)
+        #     resources.append(resource)
+
+        #     for k, v in config_data.items():
+        #         resource.set_config(k, v)
             
-        future = self.admin_client.alter_configs(resources)
+        future = self.admin_client.alter_configs([resource])
             
         # Wait for operation to finish.
         for res, f in future.items():

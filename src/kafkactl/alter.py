@@ -43,6 +43,6 @@ def alter_topic(ctx, topic, config_file, config_data):
 
     admin_client = ctx.get("admin_client")
     t = Topic(admin_client)
-    results = t.alter([topic], config_data)
+    results = t.alter(topic, config_data)
     if results:
         click.echo(json.dumps(results, sort_keys=True))
