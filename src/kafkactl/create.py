@@ -10,10 +10,18 @@ def create(ctx):
     pass
 
 @create.command("acl")
+@click.argument("resource_type")
+@click.argument("resource_name")
+@click.option("--principal", "-p", metavar="JSON", help="The principal for the ACL.")
+@click.option("--permission-type", "-P", metavar="JSON", help="The permission type for the ACL.")
+@click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.pass_obj
-def create_acl(ctx):
+def create_acl(ctx, resource_type, resource_name, principal, permission_type, timeout):
     """Create a Kafka ACL."""
-    raise NotImplemented
+    admin_client = ctx.get("admin_client")
+    a = Acl(admin_client)
+    result = a.create(resource_type, resource_name, principal=principal, permission_type=permission_type, timeout=timeout)
+    click.echo(result)
 
 @create.command("topic")
 @click.argument("topic")

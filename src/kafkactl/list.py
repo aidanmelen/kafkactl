@@ -34,14 +34,15 @@ def list_brokers(ctx, timeout, output):
         click.echo(json.dumps(brokers))
 
 @list.command("groups")
-@click.option("states", "--state", "-s", type=click.Choice(["STABLE", "EMPTY"], case_sensitive=False), default=["STABLE", "EMPTY"], multiple=True, metavar="STATES", help="Only list consumer groups which are currently in these states.")
+@click.option("states", "--state", "-s", type=click.Choice(["STABLE", "EMPTY"], case_sensitive=False), default=["STABLE", "EMPTY"], multiple=True, metavar="STATES", help="Only list consumer groups which are currently consuming from these topics.")
+@click.option("topics", "--topics", "-t", default=[], multiple=True, metavar="TOPICS", help="Only list consumer groups which are currently in these states.")
 @click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.option("--output", "-o", type=click.Choice(["TABULATE", "JSON"], case_sensitive=False), default="TABULATE", metavar="FORMAT", help="The output format.")
 @click.pass_obj
-def list_consumer_groups(ctx, states, timeout, output):
+def list_consumer_groups(ctx, states, topics, timeout, output):
     """List Kafka Consumer Groups."""
     group = ConsumerGroup(ctx.get("admin_client"))
-    groups = group.list(states=states, timeout=timeout)
+    groups = group.list(states=states, topics=topics, timeout=timeout)
 
     if output.upper() == "TABULATE":
         headers=["GROUP", "TYPE", "STATE"]

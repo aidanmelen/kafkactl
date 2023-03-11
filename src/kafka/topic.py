@@ -1,8 +1,4 @@
-from confluent_kafka import (KafkaException, ConsumerGroupTopicPartitions,
-                             TopicPartition, ConsumerGroupState)
-from confluent_kafka.admin import (AdminClient, NewTopic, NewPartitions, ConfigResource, ConfigSource,
-                                   AclBinding, AclBindingFilter, ResourceType, ResourcePatternType, AclOperation,
-                                   AclPermissionType)
+from confluent_kafka.admin import NewTopic, ConfigResource
 
 from .kafka_resource import KafkaResource
 from .broker import Broker
@@ -26,12 +22,13 @@ class Topic(KafkaResource):
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
-            List[str]: A list of topic names if successful, otherwise a dictionary with the following keys:
-                - error (str): A description of the error that occurred.
-                - message (str): A message indicating which topic(s) failed to be created.
+            List[str]: A list of Kafka Topic metadata.
+        
+        Raises:
+            KafkaError: If there is an error during the list process.
         """
         topics_metadata = self.admin_client.list_topics(timeout=timeout)
-        topics = [{"name": str(topic), "partitions": len(topic.partitions)} for topic in topics_metadata.topics.values()]
+        topics = [{"name": str(topic), "partitions": len(topic.partitions), } for topic in topics_metadata.topics.values()]
         
         if not show_internal:
             topics = [t for t in topics if not (t["name"].startswith("__") or t["name"].startswith("_confluent"))]
@@ -49,9 +46,10 @@ class Topic(KafkaResource):
             config_data (dict): Configuration data for the topic.
 
         Returns:
-            None if successful, otherwise a dictionary with the following keys:
-                - error (str): A description of the error that occurred.
-                - message (str): A message indicating which topic(s) failed to be created.
+            None
+        
+        Raises:
+            KafkaError: If there is an error during the creation process.
         """
         new_topics = [NewTopic(topic, num_partitions=partitions, replication_factor=replication_factor, config=config_data)]
         future = self.admin_client.create_topics(new_topics)
@@ -68,10 +66,9 @@ class Topic(KafkaResource):
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
-            dict: The topic metadata, including info and/or config. An error dictionary if both info or config are False.
+            dict: The information for the specified Kafka Topics.
         
         Raises:
-            KafkaException: These topics do not exist.
             KafkaError: If there is an error during the describe process.
         """
         # List all topics metadata when the topics argument is not set
@@ -131,10 +128,10 @@ class Topic(KafkaResource):
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
-            dict: The configuration for the specified topics.
+            dict: The configuration for the specified Kafka Topics.
         
         Raises:
-            KafkaError: If there is an error during the describe process.
+            KafkaError: If there is an error during the describe configurations process.
         """
         # List all topics metadata when the topics argument is not set
         if topics:

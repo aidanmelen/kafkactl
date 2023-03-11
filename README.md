@@ -160,6 +160,12 @@ _confluent-controlcenter-7-3-0-0-command                High-level  Stable
 _confluent-controlcenter-7-3-0-0                        High-level  Stable
 ```
 
+The `list groups` command with the `--topic` option can be used to list all Kafka Consumer Groups that are currently consuming from a specific topic. 
+
+```console
+$ kafkactl list groups --topic topic1
+```
+
 Describe a single Kafka Consumer Group.
 
 ```console
@@ -180,10 +186,6 @@ Delete a Consumer Group.
 ```console
 kafkactl delete group group1
 ```
-
-
-
-
 
 ## License
 
