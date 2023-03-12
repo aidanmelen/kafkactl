@@ -40,11 +40,14 @@ def alter_topic(ctx, topic, filename, configs):
 
     if filename:
         parser.read_string('[default]\n' + filename.read())
+        config_data = {key: parser['default'][key] for key in parser['default']}
 
     elif configs:
         parser.read_string('[default]\n' + '\n'.join(configs))
-
-    config_data = {key: parser['default'][key] for key in parser['default']}
+        config_data = {key: parser['default'][key] for key in parser['default']}
+    
+    else:
+        config_data = {}
 
     admin_client = ctx.get("admin_client")
     t = Topic(admin_client)

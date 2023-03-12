@@ -46,7 +46,7 @@ Get the default cluster configuration. We are using `head` to limit the output t
 
 ```console
 $ kafkactl get cluster-defaults | head -n 11
-PROPERTY-NAME                                      PROPERTY-VALUE
+NAME                                               VALUE
 sasl.oauthbearer.jwks.endpoint.refresh.ms          3600000
 remote.log.metadata.manager.listener.name          -
 controller.socket.timeout.ms                       30000
@@ -88,10 +88,10 @@ and describe the Kafka Topic we just created.
 
 ```
 $ kafkactl describe topics --topic topic1
-TOPIC    STATUS      PARTITION    LEADER  REPLICAS    IN-SYNC-REPLICAS
-topic1   Healthy             0         0  [0, 1, 2]   [0, 1, 2]
-topic1   Healthy             1         1  [1, 2, 0]   [1, 2, 0]
-topic1   Healthy             2         2  [2, 0, 1]   [2, 0, 1]
+TOPIC    STATUS    PARTITION    LEADER    REPLICAS    IN-SYNC-REPLICAS
+topic1   Healthy   0            0         0,2,1       0,2,1
+topic1   Healthy   1            1         1,0,2       1,0,2
+topic1   Healthy   2            2         2,1,0       2,1,0
 ```
 
 Or describe all Kafka Topics.
@@ -104,14 +104,14 @@ $ kafkactl describe topics
 Alter configuration atomically for a Kafka Topic, replacing non-specified configuration properties with the cluster default values.
 
 ```console
-$ kafkactl alter topic topic1 -d '{"cleanup.policy": "compact"}'
+$ kafkactl alter topic topic1 -c cleanup.policy=compact
 ```
 
 And verify the alteration by getting the configuration information for the Kafka Topic. We are filtering out confluent specific configurations using `grep` for brevity.
 
 ```console
 $ kafkactl get topic-configs -t topic1 | grep -v "confluent"
-TOPIC    PROPERTY-NAME                                     PROPERTY-VALUE
+TOPIC    NAME                                              VALUE
 topic1   compression.type                                  producer
 topic1   leader.replication.throttled.replicas             -
 topic1   message.downconversion.enable                     true
@@ -154,10 +154,10 @@ List Consumer Group information.
 
 ```
 kafkactl get groups
-GROUP                                                   TYPE        STATE
-ConfluentTelemetryReporterSampler--4883329356937767580  High-level  Stable
-_confluent-controlcenter-7-3-0-0-command                High-level  Stable
-_confluent-controlcenter-7-3-0-0                        High-level  Stable
+GROUP   TYPE        STATE
+group1  High-level  Stable
+group2  High-level  Stable
+group3  High-level  Stable
 ```
 
 The `list groups` command with the `--topic` option can be used to list all Kafka Consumer Groups that are currently consuming from a specific topic. 

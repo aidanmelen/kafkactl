@@ -29,7 +29,7 @@ def create_acl(ctx, resource_type, resource_name, principal, permission_type, ti
 @click.option("--partitions", "-p", default=3, metavar="PARTITIONS", type=int, help="The number of partitions of the Kafka topic.")
 @click.option("--replication-factor", "-r", default=3, metavar="REPLICATION_FACTOR", type=int, help="The replication factor of the Kafka topic.")
 @click.option("--filename", "-f", metavar="PATH", type=click.File("r"), help="Path to the properties file containing configs.")
-@click.option("configs", "--config", "-c", metavar="NAME=VALUE", type=str, multiple=True, help="Configuration in NAME=VALUE format.")
+@click.option("configs", "--config", "-c", default=[], metavar="NAME=VALUE", type=str, multiple=True, help="Configuration in NAME=VALUE format.")
 @click.pass_obj
 def create_topic(ctx, topic, partitions, replication_factor, filename, configs):
     """Create a Kafka Topic."""
@@ -38,11 +38,14 @@ def create_topic(ctx, topic, partitions, replication_factor, filename, configs):
 
     if filename:
         parser.read_string('[default]\n' + filename.read())
+        config_data = {key: parser['default'][key] for key in parser['default']}
 
     elif configs:
         parser.read_string('[default]\n' + '\n'.join(configs))
-
-    config_data = {key: parser['default'][key] for key in parser['default']}
+        config_data = {key: parser['default'][key] for key in parser['default']}
+    
+    else:
+        config_data = {}
 
     admin_client = ctx.get("admin_client")
     t = Topic(admin_client)
