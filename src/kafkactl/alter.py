@@ -1,6 +1,7 @@
-from kafka import (Topic, Broker, Topic, ConsumerGroup, Acl, Consumer, Producer)
+from kafka import (Cluster, Topic,ConsumerGroup, Acl, Consumer, Producer)
 
 import click
+import configparser
 import json
 
 @click.group("alter")
@@ -15,7 +16,7 @@ def alter_acl(ctx):
     """Alter Kafka ACL."""
     raise NotImplemented
 
-@alter.command("brokers")
+@alter.command("cluster")
 @click.pass_obj
 def alter_brokers(ctx):
     """Alter Kafka Brokers."""
@@ -29,17 +30,21 @@ def alter_consumer_group(ctx):
 
 @alter.command("topic")
 @click.argument("topic")
-@click.option("--config-file", "-f", metavar="PATH", type=click.File("r"), help="Path to the configuration file in JSON format.")
-@click.option("--config-data", "-d", metavar="JSON", help="Inline configuration data in JSON format.")
+@click.option("--filename", "-f", metavar="PATH", type=click.File("r"), help="Path to the properties file containing configs.")
+@click.option("configs", "--config", "-c", metavar="NAME=VALUE", type=str, multiple=True, help="Configuration in NAME=VALUE format.")
 @click.pass_obj
-def alter_topic(ctx, topic, config_file, config_data):
+def alter_topic(ctx, topic, filename, configs):
     """Alter Kafka Topic."""
-    if config_file:
-        config_data = json.load(config_file)
-    elif config_data:
-        config_data = json.loads(config_data)
-    else:
-        config_data = {}
+    config_data = {}
+    parser = configparser.ConfigParser()
+
+    if filename:
+        parser.read_string('[default]\n' + filename.read())
+
+    elif configs:
+        parser.read_string('[default]\n' + '\n'.join(configs))
+
+    config_data = {key: parser['default'][key] for key in parser['default']}
 
     admin_client = ctx.get("admin_client")
     t = Topic(admin_client)

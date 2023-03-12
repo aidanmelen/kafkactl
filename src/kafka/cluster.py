@@ -3,17 +3,29 @@ from confluent_kafka.admin import ConfigResource
 from .kafka_resource import KafkaResource
 from .consumer_group import ConsumerGroup
 
-class Broker(KafkaResource):
+class Cluster(KafkaResource):
     def __init__(self, admin_client):
         """
-        The Kafka Broker wrapper class.
+        The Kafka Cluster wrapper class.
 
         Args:
             admin_client (kafka.admin.client.AsyncAdminClient): The Kafka AdminClient instance.
         """
         super().__init__(admin_client=admin_client)
     
-    def list(self, timeout=10):
+    def get(self, timeout=10):
+        """
+        Get information about the Kafka Cluster.
+
+        Args:
+            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
+
+        Returns:
+            dict: The metadata for the Kafka Cluster.
+        
+        Raises:
+            KafkaError: If there is an error during the process.
+        """
         metadata = self.admin_client.list_topics(timeout=timeout)
 
         brokers = []
@@ -26,6 +38,28 @@ class Broker(KafkaResource):
 
         return brokers
     
+    def get_default_configs(self, timeout=10):
+        """
+        Get the Kafka cluster default configuration.
+
+        Returns:
+            dict: The Kafka cluster default configuration.
+        
+        Raises:
+            KafkaError: If there is an error during the process.
+        """
+        metadata = self.admin_client.list_topics(timeout=timeout)
+        broker_id = str(list(metadata.brokers.keys())[0])
+        resources = [ConfigResource("broker", broker_id)]
+        future = self.admin_client.describe_configs(resources)
+
+        results = {}
+        for res, f in future.items():
+            cluster_default_config = f.result()
+            results = {config.name: config.value for config in cluster_default_config.values()}
+        
+        return results
+    
     def create(self):
         raise NotImplemented
 
@@ -37,14 +71,14 @@ class Broker(KafkaResource):
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
-            dict: The broker metadata, including info and/or config. An error dictionary if both info or config are False.
+            dict: The detailed information for the Kafka Brokers.
         
         Raises:
             KafkaError: If there is an error during the describe process.
         """
         metadata = self.admin_client.list_topics(timeout=timeout)
         
-        brokers_info = {}
+        results = {}
         topics = []
         partitions = []
         replicas = []
@@ -60,39 +94,15 @@ class Broker(KafkaResource):
         
         
         group = ConsumerGroup(self.admin_client)
-        groups = group.list(timeout=timeout)
+        groups = group.get(timeout=timeout)
         
-        brokers_info["brokers"] = len(metadata.brokers.values())
-        brokers_info["topics"] = len(topics)
-        brokers_info["partitions"] = len(partitions)
-        brokers_info["replicas"] = len(replicas)
-        brokers_info["consumer_groups"] = len(groups)
+        results["brokers"] = len(metadata.brokers.values())
+        results["topics"] = len(topics)
+        results["partitions"] = len(partitions)
+        results["replicas"] = len(replicas)
+        results["consumer_groups"] = len(groups)
 
-        return brokers_info
-
-    def get_cluster_defaults(self, timeout=10):
-        """
-        Get configuration for the Kafka Cluster.
-
-        Returns:
-            dict: The configuration for the Kafka Brokers.
-        
-        Raises:
-            KafkaError: If there is an error during the describe process.
-        """
-        metadata = self.admin_client.list_topics(timeout=timeout)
-        broker_id = str(list(metadata.brokers.keys())[0])
-        resources = [ConfigResource("broker", broker_id)]
-        future = self.admin_client.describe_configs(resources)
-
-        brokers = {}
-        for res, f in future.items():
-            configs = f.result()
-
-            brokers = {}
-            brokers = {config.name: config.value for config in configs.values()}
-        
-        return brokers
+        return results
         
     def alter(self):
         raise NotImplemented

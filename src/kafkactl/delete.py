@@ -1,4 +1,4 @@
-from kafka import (Topic, Broker, ConsumerGroup, Acl, Consumer, Producer)
+from kafka import (Topic, Cluster, ConsumerGroup, Acl, Consumer, Producer)
 
 import click
 import json

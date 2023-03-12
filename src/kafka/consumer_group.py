@@ -12,9 +12,9 @@ class ConsumerGroup(KafkaResource):
         """
         super().__init__(admin_client=admin_client)
 
-    def list(self, states=["STABLE", "EMPTY"], topics=[], timeout=10):
+    def get(self, states=["STABLE", "EMPTY"], topics=[], timeout=10):
         """
-        List Kafka Consumer Groups.
+        Get Kafka Consumer Groups.
 
         Args:
             states (list[str], optional): only list consumer groups which are currently in these states.
@@ -59,12 +59,12 @@ class ConsumerGroup(KafkaResource):
     def create(self, bootstrap_servers, group):
         raise NotImplemented
 
-    def get_offsets(self, brokers, group, topics, timeout=10):
+    def get_offsets(self, bootstrap_servers, group, topics, timeout=10):
         """
         Consumer Kafka Consumer Group Offsets.
 
          Args:
-            brokers (str): The brokers name used by the consumer
+            bootstrap_servers (str): The bootstrap servers used by the consumer.
             groups (str): The consumer group name.
             topics (str): The topic names.
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
@@ -75,13 +75,13 @@ class ConsumerGroup(KafkaResource):
         Raises:
             KafkaError: If there is an error during the consumer group offsets process.
         """
-        if not brokers:
+        if not bootstrap_servers:
             return {}
 
         # Create consumer.
         # This consumer will not join the group, but the group.id is required by
         # committed() to know which group to get offsets for.
-        consumer = Consumer({'bootstrap.servers': brokers, 'group.id': group})
+        consumer = Consumer({'bootstrap.servers': bootstrap_servers, 'group.id': group})
 
         result = {}
 
@@ -118,12 +118,13 @@ class ConsumerGroup(KafkaResource):
 
         return result
    
-    def describe(self, groups=None, brokers=None, timeout=10):
+    def describe(self, groups=None, bootstrap_servers=None, timeout=10):
         """
         Describe Kafka Consumer Groups.
 
         Args:
             groups (list[str]): The list of consumer group names to be described.
+            bootstrap_servers (str): The bootstrap servers used by the consumer.
             timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
 
         Returns:
@@ -133,11 +134,11 @@ class ConsumerGroup(KafkaResource):
             KafkaError: If there is an error during the describe process.
         """
         if not groups:
-            groups = [group["name"] for group in self.list(timeout=timeout)]
+            groups = [group["name"] for group in self.get(timeout=timeout)]
 
         future = self.admin_client.describe_consumer_groups(groups, request_timeout=timeout)
         
-        groups_info = {}
+        results = {}
 
         # Describe consumer groups
         for group_id, f in future.items():
@@ -151,7 +152,7 @@ class ConsumerGroup(KafkaResource):
 
                     for tp in m.assignment.topic_partitions:
 
-                        offsets = self.get_offsets(brokers, group_id, [tp])
+                        offsets = self.get_offsets(bootstrap_servers, group_id, [tp])
 
                         current_offset = offsets.get(tp.topic, {}).get(tp.partition, {}).get("current_offset", "-")
                         log_end_offset = offsets.get(tp.topic, {}).get(tp.partition, {}).get("log_end_offset", "-")
@@ -176,7 +177,7 @@ class ConsumerGroup(KafkaResource):
                 members.append(member)
 
 
-            groups_info[group_id] = {
+            results[group_id] = {
                 "is_simple_consumer_group": group_metadata.is_simple_consumer_group,
                 "state": group_metadata.state.name,
                 "partition_assignor": group_metadata.partition_assignor,
@@ -188,7 +189,7 @@ class ConsumerGroup(KafkaResource):
                 "members": members,
             }
 
-        return groups_info
+        return results
         
     def alter(self):
         raise NotImplemented

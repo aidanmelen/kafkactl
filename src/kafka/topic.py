@@ -1,7 +1,8 @@
 from confluent_kafka.admin import NewTopic, ConfigResource
+from confluent_kafka import KafkaException, KafkaError
 
 from .kafka_resource import KafkaResource
-from .broker import Broker
+from .cluster import Cluster
 
 class Topic(KafkaResource):
     def __init__(self, admin_client):
@@ -13,9 +14,9 @@ class Topic(KafkaResource):
         """
         super().__init__(admin_client=admin_client)
         
-    def list(self, show_internal=False, timeout=10):
+    def get(self, show_internal=False, timeout=10):
         """
-        List Kafka Topics.
+        Get Kafka Topics.
 
         Args:
             show_internal (bool, optional): Whether to show internal topics. Defaults to True.
@@ -28,12 +29,51 @@ class Topic(KafkaResource):
             KafkaError: If there is an error during the list process.
         """
         topics_metadata = self.admin_client.list_topics(timeout=timeout)
-        topics = [{"name": str(topic), "partitions": len(topic.partitions), } for topic in topics_metadata.topics.values()]
+        results = [{"name": str(topic), "partitions": len(topic.partitions), } for topic in topics_metadata.topics.values()]
         
         if not show_internal:
-            topics = [t for t in topics if not (t["name"].startswith("__") or t["name"].startswith("_confluent"))]
+            results = [t for t in results if not (t["name"].startswith("__") or t["name"].startswith("_confluent"))]
 
-        return topics
+        return results
+    
+    def get_configs(self, topics=None, timeout=10):
+        """
+        Get configuration for one or many Kafka Topics.
+
+        Args:
+            topics (list, optional): List of topics to describe. If None, all topics are described. Defaults to None.
+            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
+
+        Returns:
+            dict: The configuration for the specified Kafka Topics.
+        
+        Raises:
+            KafkaError: If there is an error during the get configurations process.
+        """
+        # List all topics metadata when the topics argument is None
+        if topics:
+            response_metadata = {
+                topic: metadata for topic, metadata in self.admin_client.list_topics(timeout=timeout).topics.items() if topic in topics
+            }
+        else:
+            response_metadata = self.admin_client.list_topics(timeout=timeout).topics
+
+        results = {}
+        
+        # Get the topic config(s)
+        resources = [ConfigResource("topic", t) for t in response_metadata.keys()]
+        if not resources:
+            raise KafkaException(KafkaError(KafkaError.UNKNOWN_TOPIC_OR_PART, f"The topic '{topics[0]}' does not exist."))
+
+        # Loop through each resource and its corresponding future
+        future = self.admin_client.describe_configs(resources)
+
+        for topic, f in future.items():
+            response_metadata = f.result()
+            results[topic.name] = {}
+            results[topic.name] = {m.name: m.value if m.value != "" and m.value != None else "-" for m in response_metadata.values()}
+
+        return results
 
     def create(self, topic, partitions, replication_factor, config_data={}):
         """
@@ -79,10 +119,10 @@ class Topic(KafkaResource):
         else:
             topics_metadata = self.admin_client.list_topics(timeout=timeout).topics
 
-        topics_info = {}
+        results = {}
         # Loop over topics.
         for topic_name, topic in topics_metadata.items():
-            topics_info[topic_name] = {}
+            results[topic_name] = {}
             partitions = []
 
             # Loop over all partitions of this topic.
@@ -113,52 +153,11 @@ class Topic(KafkaResource):
                     'status': "HEALTHY" if len(isrs) == len(replicas) else "UNHEALTHY",
                 })
 
-            topics_info[topic_name]["partitions"] = len(partitions)
-            topics_info[topic_name]["replicas"] = len(replicas)
-            topics_info[topic_name]["availability"] = partitions
+            results[topic_name]["partitions"] = len(partitions)
+            results[topic_name]["replicas"] = len(replicas)
+            results[topic_name]["availability"] = partitions
         
-        return topics_info
-
-    def get_configs(self, topics=None, timeout=10):
-        """
-        Get configuration for one or many Kafka Topics.
-
-        Args:
-            topics (list, optional): List of topics to describe. If None, all topics are described. Defaults to None.
-            timeout (int, optional): The time (in seconds) to wait for the operation to complete before timing out.
-
-        Returns:
-            dict: The configuration for the specified Kafka Topics.
-        
-        Raises:
-            KafkaError: If there is an error during the describe configurations process.
-        """
-        # List all topics metadata when the topics argument is not set
-        if topics:
-            response_metadata = {
-                topic: metadata for topic, metadata in self.admin_client.list_topics(timeout=timeout).topics.items() if topic in topics
-            }
-        else:
-            response_metadata = self.admin_client.list_topics(timeout=timeout).topics
-
-        topic_configs = {}
-
-        # Get the topic configurations
-        resources = [ConfigResource("topic", t) for t in response_metadata.keys()]
-        future = self.admin_client.describe_configs(resources)
-
-        # Loop through each resource and its corresponding future
-        topic_configs = {}
-        for topic, f in future.items():
-
-            # Get the result of the future containing the topic configuration
-            response_metadata = f.result()
-
-            # Loop through each configuration parameter and add it to the dictionary
-            topic_configs[topic.name] = {}
-            topic_configs[topic.name] = {m.name: m.value if m.value != "" and m.value != None else "-" for m in response_metadata.values()}
-
-        return topic_configs
+        return results
 
     def alter(self, topic, config_data):
         """

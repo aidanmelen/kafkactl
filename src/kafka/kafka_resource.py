@@ -41,8 +41,8 @@ class KafkaResource(ABC):
         self.logger = get_logger(log_level)
     
     @abstractmethod
-    def list(self) -> bool:
-        """List one or many resources."""
+    def get(self) -> bool:
+        """Get one or many resources."""
         raise NotImplemented
     
     @abstractmethod

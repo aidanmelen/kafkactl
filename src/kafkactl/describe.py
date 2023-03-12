@@ -1,5 +1,5 @@
 from tabulate import tabulate
-from kafka import (Topic, Broker, Topic, ConsumerGroup, Acl, Consumer, Producer)
+from kafka import (Cluster, Topic,ConsumerGroup, Acl, Consumer, Producer)
 
 import click
 import json
@@ -16,24 +16,24 @@ def describe_acls(ctx):
     """Describe Kafka ACLs."""
     raise NotImplemented
 
-@describe.command("brokers")
+@describe.command("cluster")
 @click.option("--timeout", "-T", default=10, metavar="SECONDS", type=int, help="The timeout in seconds.")
 @click.option("--output", "-o", type=click.Choice(["TABULATE", "JSON"], case_sensitive=False), default="TABULATE", metavar="FORMAT", help="The output format.")
 @click.pass_obj
-def describe_brokers(ctx, timeout, output):
-    """Describe Kafka Brokers."""
-    broker = Broker(ctx.get("admin_client"))
-    brokers_overview = broker.describe(timeout=timeout)
+def describe_cluster(ctx, timeout, output):
+    """Describe Kafka Cluster."""
+    cluster = Cluster(ctx.get("admin_client"))
+    results = cluster.describe(timeout=timeout)
 
     if output.upper() == "TABULATE":
         headers=["BROKERS", "TOPICS", "PARTITIONS", "REPLICAS", "CONSUMER_GROUPS"]
         broker_rows = [
-            [brokers_overview["brokers"], brokers_overview["topics"], brokers_overview["partitions"], brokers_overview["replicas"], brokers_overview["consumer_groups"]]
+            [results["brokers"], results["topics"], results["partitions"], results["replicas"], results["consumer_groups"]]
         ]
-        click.echo(tabulate(broker_rows, headers=headers, tablefmt="plain"))
+        click.echo(tabulate(broker_rows, headers=headers, tablefmt="plain", numalign="left"))
     
     if output.upper() == "JSON":
-        click.echo(json.dumps(brokers_overview))
+        click.echo(json.dumps(results))
 
 @describe.command("groups")
 @click.option("groups", "--group", "-g", multiple=True, metavar="GROUP", help="The name of the Kafka Consumer Group. This option can be used multiple times to specify multiple groups.")
@@ -43,24 +43,24 @@ def describe_brokers(ctx, timeout, output):
 def describe_consumer_groups(ctx, groups, timeout, output):
     """Describe Kafka Consumer Groups."""
     group = ConsumerGroup(ctx.get("admin_client"))
-    groups = group.describe(list(groups), brokers=ctx.get("bootstrap_servers"), timeout=timeout)
+    results = group.describe(list(groups), brokers=ctx.get("bootstrap_servers"), timeout=timeout)
 
     if output.upper() == "TABULATE":
         headers=["GROUP", "TOPIC", "PARTITION", "CURRENT-OFFSET", "LOG-END-OFFSET", "LAG", "CONSUMER-ID", "HOST", "CLIENT-ID"]
         group_rows = []
-        for group, metadata in groups.items():
-            for members in metadata.get("members", []):
-                for assignment in members.get("assignments", []):
+        for group, metadata in results.items():
+            for m in metadata.get("members", []):
+                for a in m.get("assignments", []):
                     group_rows.append([
-                        group, assignment["topic"], assignment["partition"], 
-                        assignment["current_offset"], assignment["log_end_offset"], assignment["lag"], 
-                        members["id"], members["host"], members["client_id"]
+                        group, a["topic"], a["partition"], 
+                        a["current_offset"], a["log_end_offset"], a["lag"], 
+                        m["id"], m["host"], m["client_id"]
                     ])
 
-        click.echo(tabulate(group_rows, headers=headers, tablefmt="plain"))
+        click.echo(tabulate(group_rows, headers=headers, tablefmt="plain", numalign="left"))
     
     if output.upper() == "JSON":
-        click.echo(json.dumps(groups))
+        click.echo(json.dumps(results))
 
 @describe.command("topics")
 @click.option("topics", "--topic", "-t", multiple=True, metavar="TOPIC", help="The name of the Kafka Topic. This option can be used multiple times to specify multiple topics.")
@@ -77,10 +77,13 @@ def describe_topics(ctx, topics, timeout, output):
         topic_rows = []
         for topic, metadata in topics.items():
             for a in metadata.get("availability", []):
-                topic_rows.append([topic, a["status"].capitalize(), a["id"], a["leader"], str(a["replicas"]), str(a["isrs"])])
+                topic_rows.append([
+                    topic, a["status"].capitalize(), a["id"], a["leader"], 
+                    ",".join([ str(i) for i in a["replicas"]]),
+                    ",".join([ str(i) for i in a["isrs"]]),
+                ])
             
-        click.echo(tabulate(topic_rows, headers=headers, tablefmt="plain"))
-
+        click.echo(tabulate(topic_rows, headers=headers, tablefmt="plain", numalign="left"))
 
     if output.upper() == "JSON":
         click.echo(json.dumps(topics))

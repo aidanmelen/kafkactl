@@ -22,12 +22,12 @@ pip install kafkactl
 2. The environment variable: `KAFKACTL_BOOTSTRAP_SERVERS=kafka:9092 kafkactl <sub-command>`
 3. The config file: `kafkactl --config-file ./kafkaconfig.config <sub-command>`
 
-### Brokers
+### Cluster
 
-List the Kafka brokers information.
+Get the Kafka Cluster information.
 
 ```console
-$ kafkactl list brokers
+$ kafkactl get cluster
   BROKER  TYPE        ENDPOINT
        0  Controller  kafka-0.kafka.confluent.svc.cluster.local:9092
        2  Worker      kafka-2.kafka.confluent.svc.cluster.local:9092
@@ -73,10 +73,10 @@ Create a Kafka Topic.
 $ kafkactl create topic topic1
 ```
 
-List the Kafka Topic and hide the internal topics.
+Get the Kafka Topic and hide the internal topics.
 
 ```console
-$ kafkactl list topics --hide-internal
+$ kafkactl get topics --hide-internal
 TOPIC                                PARTITION
 confluent.connect-offsets                   25
 confluent.connect-configs                    1
@@ -153,7 +153,7 @@ kafkactl delete topic topic1
 List Consumer Group information.
 
 ```
-kafkactl list groups
+kafkactl get groups
 GROUP                                                   TYPE        STATE
 ConfluentTelemetryReporterSampler--4883329356937767580  High-level  Stable
 _confluent-controlcenter-7-3-0-0-command                High-level  Stable
@@ -163,7 +163,7 @@ _confluent-controlcenter-7-3-0-0                        High-level  Stable
 The `list groups` command with the `--topic` option can be used to list all Kafka Consumer Groups that are currently consuming from a specific topic. 
 
 ```console
-$ kafkactl list groups --topic topic1
+$ kafkactl get groups --topic topic1
 ```
 
 Describe a single Kafka Consumer Group.

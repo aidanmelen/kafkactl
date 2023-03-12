@@ -12,7 +12,7 @@ class TestTopic(unittest.TestCase):
         self.topic = Topic(admin_client=self.admin_client)
     
     def test_list(self):
-        topics = self.topic.list(timeout=1)
+        topics = self.topic.get(timeout=1)
 
         self.admin_client.assert_has_calls([
             call.list_topics(timeout=1),

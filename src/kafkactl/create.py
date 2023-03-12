@@ -1,6 +1,7 @@
-from kafka import (Topic, Broker, Topic, ConsumerGroup, Acl, Consumer, Producer)
+from kafka import (Topic, Topic, ConsumerGroup, Acl, Consumer, Producer)
 
 import click
+import configparser
 import json
 
 @click.group("create")
@@ -26,18 +27,22 @@ def create_acl(ctx, resource_type, resource_name, principal, permission_type, ti
 @create.command("topic")
 @click.argument("topic")
 @click.option("--partitions", "-p", default=3, metavar="PARTITIONS", type=int, help="The number of partitions of the Kafka topic.")
-@click.option("--replication-factor", "-r", default=3, metavar="REPLICATION_FACTOR", help="The replication factor of the Kafka topic.")
-@click.option("--config-file", "-f", metavar="PATH", type=click.File("r"), help="Path to the configuration file in JSON format.")
-@click.option("--config-data", "-d", metavar="JSON", help="Inline configuration data in JSON format.")
+@click.option("--replication-factor", "-r", default=3, metavar="REPLICATION_FACTOR", type=int, help="The replication factor of the Kafka topic.")
+@click.option("--filename", "-f", metavar="PATH", type=click.File("r"), help="Path to the properties file containing configs.")
+@click.option("configs", "--config", "-c", metavar="NAME=VALUE", type=str, multiple=True, help="Configuration in NAME=VALUE format.")
 @click.pass_obj
-def create_topic(ctx, topic, partitions, replication_factor, config_file, config_data):
+def create_topic(ctx, topic, partitions, replication_factor, filename, configs):
     """Create a Kafka Topic."""
-    if config_file:
-        config_data = json.load(config_file)
-    elif config_data:
-        config_data = json.loads(config_data)
-    else:
-        config_data = {}
+    config_data = {}
+    parser = configparser.ConfigParser()
+
+    if filename:
+        parser.read_string('[default]\n' + filename.read())
+
+    elif configs:
+        parser.read_string('[default]\n' + '\n'.join(configs))
+
+    config_data = {key: parser['default'][key] for key in parser['default']}
 
     admin_client = ctx.get("admin_client")
     t = Topic(admin_client)

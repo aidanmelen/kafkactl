@@ -2,7 +2,6 @@ from confluent_kafka import KafkaException
 from confluent_kafka.admin import AdminClient
 
 from .get import get
-from .list import list
 from .create import create
 from .describe import describe
 from .alter import alter
@@ -17,8 +16,8 @@ import json
 class CatchAllExceptions(click.Group):
     """A click group that catches all exceptions and displays them as a message.
     This class extends the functionality of the `click.Group` class by adding
-    a try-except block around the call to `main()`. Any exceptions that are
-    raised during the call to `main()` are caught and displayed as a message
+    a try-except block around the call to `cli()`. Any exceptions that are
+    raised during the call to `cli()` are caught and displayed as a message
     to the user.
     """
 
@@ -51,7 +50,6 @@ def cli(ctx, bootstrap_servers, kafka_config, log_level):
     }
 
 cli.add_command(get)
-cli.add_command(list)
 cli.add_command(create)
 cli.add_command(describe)
 cli.add_command(alter)
